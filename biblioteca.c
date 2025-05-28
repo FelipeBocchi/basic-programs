@@ -27,12 +27,14 @@ typedef struct
 
 //    -----variaveis globais---
 Livro *livros = NULL;
-int num_Livros_cadast = 0;
+int num_Livros_cadast = 0;// salva_num_livro;
 
 //    -----Funcion------
 void cadastrar_livros();
 void salva_livros_arq();
 void emprestimo_livros();
+void ajuste_estoque(Livro *temp[], int i, int livros_levados);
+void quant_livros_est();
 void valida_abertura_arq(FILE *arq);
 int menu_Principla();
 
@@ -52,10 +54,16 @@ int main()
         break;
 
         case 2:
+            emprestimo_livros();
+            quant_livros_est();
+        break;
 
+        case 3:
+            quant_livros_est();
         break;
 
     }
+    return 0;
 }
 
 void cadastrar_livros()
@@ -105,6 +113,8 @@ void cadastrar_livros()
 
         num_Livros_cadast++;
     } while (valida_saida != 'n');
+    //int *p = &salva_num_livro;
+    //p  =  num_Livros_cadast;
 
 }
 
@@ -120,9 +130,11 @@ void salva_livros_arq()
 
 void emprestimo_livros()
 {
+    int livros_levados, x=0;
     char nome_livro[max_titulo];
+    Livro *temp = (Livro *) malloc(num_Livros_cadast * sizeof(Livro));
 
-    FILE *arq =  fopen(LIVROS, "ab");
+    FILE *arq =  fopen(LIVROS, "rb");
     valida_abertura_arq(arq);
 
     printf("\n%45s==============================", "");
@@ -134,7 +146,69 @@ void emprestimo_livros()
     nome_livro[strcspn(nome_livro, "\n")] =  '\0';
     getchar();
 
-    
+    fread(&temp, sizeof(Livro), num_Livros_cadast, arq);
+
+    for(int i = 0; i < num_Livros_cadast; i++)
+    {
+        if(nome_livro == temp[i].titulo)
+        {
+            x = x + 1;
+            printf("\n%50s Quantidade de exeplares velados: ", "");
+            scanf("%d", &livros_levados);
+            getchar();
+
+            ajuste_estoque(&temp, i, livros_levados);
+            livros[i].numero_exemplares = temp[i].numero_exemplares;
+        }
+    }
+    if(x == 0){printf("\n%45s  Erro ao alterar estoque!!!","");}
+
+    free(temp);
+    fclose(arq);
+}
+
+//                  Livro *temp, [].  != Livro *temp[],  []->
+void ajuste_estoque(Livro *temp[], int i, int livros_levados)
+{
+    Livro troca;
+
+    FILE *arq = fopen(LIVROS, "a+b");
+    valida_abertura_arq(arq);
+
+    temp[i]->numero_exemplares -= livros_levados;
+
+    strcpy(troca.titulo, temp[i]->titulo);
+    strcpy(troca.autor, temp[i]->autor);
+    //troca.titulo = temp[i]->titulo;
+    //troca.autor = temp[i]->autor;
+    troca.ano_publicacao = temp[i]->ano_publicacao;
+    troca.numero_exemplares =  temp[i]->numero_exemplares;
+
+    fseek(arq, i * -sizeof(Livro), SEEK_SET);
+    fwrite(&troca, sizeof(Livro), 1, arq);
+
+    fclose(arq);
+}
+
+void quant_livros_est()
+{
+    Livro *temp = (Livro*) malloc(num_Livros_cadast  * sizeof(Livro));
+
+    FILE *arq =fopen(LIVROS, "rb");
+    valida_abertura_arq(arq);
+
+    fread(&temp, sizeof(Livro), num_Livros_cadast, arq);
+
+    for(int i = 0; i < num_Livros_cadast; i++)
+    {
+        printf("\n%45s==============================", "");
+        printf("\n%50s LIVROS EM ESTOQUE", "");
+        printf("\n%45s==============================", "");
+        printf("\n%50s %s: %d", "", temp[i].titulo, temp[i].numero_exemplares);
+        printf("\n%45s==============================", "");
+    }
+
+    fclose(arq);
 }
 
 void valida_abertura_arq(FILE *arq)
