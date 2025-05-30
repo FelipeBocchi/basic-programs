@@ -8,237 +8,324 @@ Crie um sistema para cadastro e busca de livros. Cada livro deve ter título, au
 //    -----bibliotecas-----
 #include <stdio.h>
 #include <stdlib.h>
-#include <locale.h>
 #include <string.h>
+#include <locale.h>
 
-//    -----define------
-#define max_titulo 500
-#define max_autor 100
-#define LIVROS "livros_cadastrados.bin"
+#define max_titulo 50
+#define max_nome 100
+#define arqBin "livaria.bin"
 
-//    ----structs------
 typedef struct
 {
+    int id;
     char titulo[max_titulo];
-    char autor[max_autor];
-    int ano_publicacao;
-    int numero_exemplares;
+    char autor[max_nome];
+    int publicacao;
+    int estoque;
 }Livro;
 
-//    -----variaveis globais---
-Livro *livros = NULL;
-int num_Livros_cadast = 0;// salva_num_livro;
 
-//    -----Funcion------
-void cadastrar_livros();
-void salva_livros_arq();
-void emprestimo_livros();
-void ajuste_estoque(Livro *temp[], int i, int livros_levados);
-void quant_livros_est();
-void valida_abertura_arq(FILE *arq);
-int menu_Principla();
+//  ------- Funções -------
+void cadastrar(FILE *);
+void emprestimo(FILE *);
+void devolucao(FILE *);
+void buscar_nome(FILE *);
+void converte_txt(FILE *);
+void limpa_buff(void);
+int show_Menu(void);
 
 int main()
 {
     setlocale(LC_ALL, "portuguese");
+    Livro vazio = {0,"","",0,0};
+    FILE *ptFl;
+    int op;
 
-    int opcao = menu_Principla();
-
-
-
-    switch(opcao)
+    if((ptFl = fopen(arqBin, "r+")) == NULL)
     {
-        case 1:
-            cadastrar_livros();
-            salva_livros_arq();
-        break;
+        if((ptFl = fopen(arqBin, "w+")) == NULL)
+        {
+            printf("\n%45s Erro ao abrir arquivo binario!!!", "");
+            return 1;
+        }
+        else
+        {
+            for(int i = 0; i < 100; i++)
+            {
+                fwrite(&vazio, sizeof(Livro), 1, ptFl);
+            }
+            rewind(ptFl);
+        }
 
-        case 2:
-            emprestimo_livros();
-            quant_livros_est();
-        break;
-
-        case 3:
-            quant_livros_est();
-        break;
-
+        //rewind(ptFl);
+        printf("\n%50s Arquivo preencido com sucesso!!!", "");
     }
+    while((op = show_Menu()) != 6)
+    {
+        switch (op)
+        {
+            case 1:
+                cadastrar(ptFl);
+                break;
+            case 2:
+                emprestimo(ptFl);
+                break;
+            case 3:
+                devolucao(ptFl);
+                break;
+            case 4:
+                buscar_nome(ptFl);
+                break;
+            case 5:
+                converte_txt(ptFl);
+                break;
+            case 6:
+                printf("\n%50s Saindo...","");
+                break;
+            default:
+                printf("\n%50s Opecao invalida!!!", "");
+                break;
+        }
+    }
+
+    fclose(ptFl);
     return 0;
 }
 
-void cadastrar_livros()
+int show_Menu()
 {
-    int opcao_invalida=0;
-    char valida_saida;
+    int op;
 
-    do
+    printf("\n%45s =============================", "");
+    printf("\n%50s MENU PRINCIPAL", "");
+    printf("\n%45s =============================", "");
+    printf("\n%50s [1]Cadastro de livros", "");
+    printf("\n%50s [2]Emprestimo de livros", "");
+    printf("\n%50s [3]Devolucao de livros", "");
+    printf("\n%50s [4]Busca por titulo ou autor", "");
+    printf("\n%50s [5]Converter para txt", "");
+    printf("\n%50s [6]Sair", "");
+    printf("\n%45s =============================", "");
+    printf("\n%50s Opcao:", "");
+
+    scanf("%d", &op);
+    return op;
+}
+
+void cadastrar(FILE *ptFl)
+{
+    Livro livros;
+    int new_id;
+
+    printf("\n%45s =============================", "");
+    printf("\n%50s Cadastrar livro", "");
+    printf("\n%45s =============================", "");
+
+    printf("\n%50s Informe o id do novo livro:", "");
+    scanf("%d", &new_id);
+    limpa_buff();
+    printf("\n%45s =============================", "");
+
+    fseek(ptFl, (new_id-1) * sizeof(livros), SEEK_SET);
+    fread(&livros, sizeof(Livro), 1, ptFl);
+
+    if(livros.id != 0)
     {
-        Livro *temp = realloc(livros, (num_Livros_cadast + 1) * sizeof(Livro));
-        if(temp == NULL){printf("\n%45sErro ao alocar memoria", ""); return;}
+        printf("\n%50s Conta ja existe!", "");
+    }else
+    {
+        printf("\n%50s Informe:", "");
+        printf("\n%50s titulo:", "");
+        //fgets(livros.titulo, max_titulo, stdin);
+        fgets(livros.titulo, sizeof(livros.titulo), stdin);
+        livros.titulo[strcspn(livros.titulo, "\n")] = '\0';
+        limpa_buff();
 
-        livros = temp;
+        printf("\n%50s autor:", "");
+        //fgets(livros.autor, max_nome, stdin);
+        fgets(livros.autor, sizeof(livros.autor), stdin);
+        livros.autor[strcspn(livros.autor, "\n")] = '\0';
+        limpa_buff();
 
-        int c;
-        while((c = getchar()) != '\n' && c !=  EOF);
+        printf("\n%50s ano de publicacao:", "");
+        scanf("%d", &livros.publicacao);
+        limpa_buff();
 
-        printf("\n%45s==============================", "");
-        printf("\n%50s CADASTRAR LIVROS", "");
-        printf("\n%45s==============================", "");
+        printf("\n%50s estoque:", "");
+        scanf("%d", &livros.estoque);
+        limpa_buff();
+        printf("\n%45s =============================", "");
+        livros.id = new_id;
 
-        printf("\n%50s TITULO: ", "");
-        fgets(livros[num_Livros_cadast].titulo, sizeof(max_titulo), stdin);
-        livros[num_Livros_cadast].titulo[strcspn(livros[num_Livros_cadast].titulo, "\n")] = '\0';
-        while((c = getchar()) != '\n' && c !=  EOF);
-
-        printf("\n%50s NOME AUTOR: ", "");
-        fgets(livros[num_Livros_cadast].autor, max_autor, stdin);
-        livros[num_Livros_cadast].autor[strcspn(livros[num_Livros_cadast].autor, "\n")]  = '\0';
-
-        printf("\n%50s ANO PUBLICACAO: ", "");
-        scanf("%d", &livros[num_Livros_cadast].ano_publicacao);
-
-        printf("\n%50s NUMERO EXEMPLARES: ", "");
-        scanf("%d", &livros[num_Livros_cadast].numero_exemplares);
-
-        do
-        {
-            while ((c = getchar()) != '\n' && c != EOF);
-            if(opcao_invalida > 0){printf("\n%45sOpcao invalida!!! insira(s/n)", "");}
-
-            printf("\n%50s DESEJA ADICIONAR MAIS LIVROS (s/n): ", "");
-            scanf("%c", &valida_saida);
-            opcao_invalida++;
-        } while (valida_saida != 's' && valida_saida != 'n');
-        opcao_invalida=0;
-
-        num_Livros_cadast++;
-    } while (valida_saida != 'n');
-    //int *p = &salva_num_livro;
-    //p  =  num_Livros_cadast;
+        fseek(ptFl, (new_id - 1) * sizeof(Livro), SEEK_SET);
+        fwrite(&livros, sizeof(Livro), 1, ptFl);
+    }
 
 }
 
-void salva_livros_arq()
+void emprestimo(FILE *ptFl)
 {
-    FILE *arq = fopen(LIVROS, "ab");
-    valida_abertura_arq(arq);
+    Livro livros;
+    int id, quant_livro;
 
-    fwrite(livros, sizeof(Livro), num_Livros_cadast, arq);
+    printf("\n%45s =============================", "");
+    printf("\n%50s EMPRESTIMO DE LIVROS", "");
+    printf("\n%45s =============================", "");
+    printf("\n%50s Qual o id do livro", "");
+    printf("\n%50s Opcao:", "");
+    scanf("%d", &id);
+    limpa_buff();
+    printf("\n%45s =============================", "");
 
-    fclose(arq);
+    fseek(ptFl, (id - 1) * sizeof(Livro), SEEK_SET);
+    fread(&livros, sizeof(Livro), 1, ptFl);
+
+    if(livros.id == 0)
+    {
+        printf("\n%50s Id de livro nao cadastrado ainda!!!", "");
+    }else
+    {
+        printf("\n%50s Livro selecionado:", "");
+        printf("\n%50s %-6d%-16s%-16s%-6d%-6d", "", livros.id,
+                                                livros.titulo,
+                                                livros.autor,
+                                                livros.publicacao,
+                                                livros.estoque);
+        printf("\n%50s Quantidade do livro '%s' a ser levado:", "", livros.titulo);
+        scanf("%d", &quant_livro);
+        limpa_buff();
+        printf("\n%45s =============================", "");
+
+        livros.estoque -= quant_livro;
+
+        fseek(ptFl, (id - 1)*sizeof(Livro), SEEK_SET);
+        fwrite(&livros, sizeof(Livro), 1, ptFl);
+
+        printf("\n%50s Estoque ajustado:", "");
+        printf("\n%50s %-6d%-16s%-16s%-6d%-6d", "", livros.id,
+                                                livros.titulo,
+                                                livros.autor,
+                                                livros.publicacao,
+                                                livros.estoque);
+        printf("\n%45s =============================", "");
+    }
+
 }
 
-void emprestimo_livros()
+void devolucao(FILE *ptFl)
 {
-    int livros_levados, x=0;
-    char nome_livro[max_titulo];
-    Livro *temp = (Livro *) malloc(num_Livros_cadast * sizeof(Livro));
+    Livro livros;
+    int id, quant_devol;
+    printf("\n%45s =============================", "");
+    printf("\n%50s DEVOLUCAO DE LIVROS", "");
+    printf("\n%45s =============================", "");
+    printf("\n%50s Informe o  id do livro devolvido:", "");
+    scanf("%d", &id);
+    limpa_buff();
+    printf("\n%45s =============================", "");
 
-    FILE *arq =  fopen(LIVROS, "rb");
-    valida_abertura_arq(arq);
+    fseek(ptFl, (id - 1) * sizeof(Livro), SEEK_SET);
+    fread(&livros, sizeof(Livro), 1, ptFl);
 
-    printf("\n%45s==============================", "");
-    printf("\n%50s Emprestimo de Livro", "");
-    printf("\n%45s==============================", "");
-
-    printf("\n%50s Qual livro deseja levar: ", "");
-    fgets(nome_livro, sizeof(max_titulo), stdin);
-    nome_livro[strcspn(nome_livro, "\n")] =  '\0';
-    getchar();
-
-    fread(&temp, sizeof(Livro), num_Livros_cadast, arq);
-
-    for(int i = 0; i < num_Livros_cadast; i++)
+    if(livros.id == 0)
     {
-        if(nome_livro == temp[i].titulo)
-        {
-            x = x + 1;
-            printf("\n%50s Quantidade de exeplares velados: ", "");
-            scanf("%d", &livros_levados);
-            getchar();
+        printf("\n%50s Id de livro nao existente!!!", "");
+    }else
+    {
+        printf("\n%50s Informe a quantidade de livros devolvidos:", "");
+        scanf("%d", &quant_devol);
+        limpa_buff();
+        printf("\n%45s =============================", "");
 
-            ajuste_estoque(&temp, i, livros_levados);
-            livros[i].numero_exemplares = temp[i].numero_exemplares;
+        livros.estoque +=  quant_devol;
+        fseek(ptFl, (id - 1) * sizeof(Livro), SEEK_SET);
+        fwrite(&livros, sizeof(Livro), 1, ptFl);
+
+        printf("\n%50s Estoque ajustado:", "");
+        printf("\n%50s %-6d%-16s%-16s%-6d%-6d", "", livros.id,
+                                                livros.titulo,
+                                                livros.autor,
+                                                livros.publicacao,
+                                                livros.estoque);
+        printf("\n%45s =============================", "");
+    }
+
+}
+
+void buscar_nome(FILE *ptFl)
+{
+    Livro livros[100];
+    int valida=0;
+    char nome[max_titulo];
+
+    printf("\n%45s =============================", "");
+    printf("\n%50s BUSCA DE LIVRO POR NOME", "");
+    printf("\n%45s =============================", "");
+    printf("\n%50s Informe o nome do titulo/autor:", "");
+    limpa_buff();
+    fgets(nome, sizeof(nome), stdin);
+    nome[strcspn(nome, "\n")] = '\0';
+    printf("\n%45s =============================", "");
+
+    rewind(ptFl);
+    for(int i = 0; i < 100; i++)
+    {
+        fseek(ptFl, i * sizeof(Livro), SEEK_SET);
+        fread(&livros[i], sizeof(Livro), 1, ptFl);
+    }
+
+
+    for(int  i = 0; i<100; i++)
+    {
+       if(strcmp(livros[i].titulo, nome) == 0 || strcmp(livros[i].autor, nome) == 0)
+        {
+            printf("\n%50s Livro achado:", "");
+            printf("\n%50s %-6d%-16s%-16s%-6d%-6d", "", livros[i].id,
+                                                livros[i].titulo,
+                                                livros[i].autor,
+                                                livros[i].publicacao,
+                                                livros[i].estoque);
+            printf("\n%45s =============================", "");
+            valida++;
         }
+
     }
-    if(x == 0){printf("\n%45s  Erro ao alterar estoque!!!","");}
 
-    free(temp);
-    fclose(arq);
+    if(valida == 0)
+        printf("\n%50s Nome de livro NAO encontrado!!!", "");
+    if(valida == 1)
+        printf("\n%50s Nome de livro encontrado!!!", "");
+    if(valida > 1)
+        printf("\n%50s Nome tem dois ou mais cadastros!!!", "");
 }
 
-//                  Livro *temp, [].  != Livro *temp[],  []->
-void ajuste_estoque(Livro *temp[], int i, int livros_levados)
+void converte_txt(FILE *ptFl)
 {
-    Livro troca;
+    Livro livros;
+    FILE *grava;
 
-    FILE *arq = fopen(LIVROS, "a+b");
-    valida_abertura_arq(arq);
-
-    temp[i]->numero_exemplares -= livros_levados;
-
-    strcpy(troca.titulo, temp[i]->titulo);
-    strcpy(troca.autor, temp[i]->autor);
-    //troca.titulo = temp[i]->titulo;
-    //troca.autor = temp[i]->autor;
-    troca.ano_publicacao = temp[i]->ano_publicacao;
-    troca.numero_exemplares =  temp[i]->numero_exemplares;
-
-    fseek(arq, i * -sizeof(Livro), SEEK_SET);
-    fwrite(&troca, sizeof(Livro), 1, arq);
-
-    fclose(arq);
-}
-
-void quant_livros_est()
-{
-    Livro *temp = (Livro*) malloc(num_Livros_cadast  * sizeof(Livro));
-
-    FILE *arq =fopen(LIVROS, "rb");
-    valida_abertura_arq(arq);
-
-    fread(&temp, sizeof(Livro), num_Livros_cadast, arq);
-
-    for(int i = 0; i < num_Livros_cadast; i++)
+    if((grava =  fopen("converte.txt", "w")) == NULL)
     {
-        printf("\n%45s==============================", "");
-        printf("\n%50s LIVROS EM ESTOQUE", "");
-        printf("\n%45s==============================", "");
-        printf("\n%50s %s: %d", "", temp[i].titulo, temp[i].numero_exemplares);
-        printf("\n%45s==============================", "");
-    }
-
-    fclose(arq);
-}
-
-void valida_abertura_arq(FILE *arq)
-{
-    if(arq != NULL)
-        printf("\nArquico abreto com sucesso!!");
-    else
+        printf("\n%50s Arquivo txt nao consegue abrir", "");
+    }else
     {
-        printf("\nErro ao abrir arquivo!!!");
-        fclose(arq);
+        rewind(ptFl);
+        fprintf(grava, "%-6s%-16s%-11s%-6s%-6s\n", "ID", "TITULO", "AUTOR", "DATA", "ESTOQUE");
+
+        while(fread(&livros, sizeof(Livro), 1, ptFl) == 1)
+        {
+            if(livros.id != 0)
+            {
+                fprintf(grava, "%-6d%-16s%-11s%-6d%-6d\n", livros.id,  livros.titulo, livros.autor, livros.publicacao, livros.estoque);
+            }
+        }
+        fclose(grava);
     }
-
 }
 
-int menu_Principla()
+void limpa_buff()
 {
-    int opcao;
-
-    printf("\n%45s==============================", "");
-    printf("\n%50sMENU PRINCIPAL", "");
-    printf("\n%45s==============================", "");
-
-    printf("\n%50s[1] Cadastro de livros", "");
-    printf("\n%50s[2] Emprestimo de livros", "");
-    printf("\n%50s[3] Devolucao de livros ", "");
-    printf("\n%50s[4] Busca por titulo ou autor", "");
-    printf("\n%45s==============================", "");
-
-    scanf("%d", &opcao);
-    return opcao;
+    char c;
+    while((c = getchar()) != '\n'  && c !=EOF);
 }
-
 
